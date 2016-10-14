@@ -1,0 +1,7 @@
+# App settings go here, they're validated in app.main.load_settings
+database:
+  name: 'helpmanual'
+  user: 'postgres'
+  password: 'waffle'
+  host: localhost
+  port: 5432
