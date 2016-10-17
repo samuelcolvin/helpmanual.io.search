@@ -23,7 +23,3 @@ test-buildcov:
 .PHONY: reset-db
 reset-db:
 	python -c "from app.management import prepare_database; prepare_database(True)"
-
-.PHONY: db-populate
-db-populate:
-	python -c "from app.management import populate_dummy_db; populate_dummy_db()"
