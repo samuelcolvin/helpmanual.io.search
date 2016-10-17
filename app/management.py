@@ -6,11 +6,10 @@ from .main import load_settings, pg_dsn
 
 CREATE_TABLES_SQL = """
 CREATE TABLE entries (
-    path character varying(31) PRIMARY KEY,
+    url character varying(31) PRIMARY KEY,
     name character varying(31) NOT NULL,
     vector tsvector NOT NULL,
-    description text,
-    UNIQUE (path)
+    description text
 );
 
 CREATE INDEX vector_index ON entries USING GIN (vector);
@@ -70,31 +69,32 @@ setweight(to_tsvector(%(body)s), 'C')
 """
 
 INSERT_ROW_SQL = """
-INSERT INTO entries (path, name, description, vector) VALUES(
-    %(path)s,
+INSERT INTO entries (url, name, description, vector) VALUES(
+    %(url)s,
     %(name)s,
     %(description)s,
     {0}
 )
 ON CONFLICT (path) DO UPDATE SET
-  name = %(name)s,
+  url = %(url)s,
   description = %(description)s,
   vector = {0};
 """.format(VECTOR_SQL)
 
-SEARCH_SQL = "SELECT * FROM entries WHERE vector @@ to_tsquery('english', %s);"
-
+SEARCH_SQL = """\
+SELECT name, description, url, ts_rank_cd(vector, query) AS rank
+FROM entries, to_tsquery(%s) AS query
+WHERE vector @@ query
+ORDER BY rank DESC
+LIMIT 20;
+"""
 
 async def _populate_dummy_data(db_settings):
     async with create_pool(pg_dsn(db_settings)) as engine:
         async with engine.acquire() as conn:
             async with conn.cursor() as cur:
-                await cur.execute(INSERT_ROW_SQL, dict(path='foo', name='bar', description='foobar', body='boom'))
-                await cur.execute(INSERT_ROW_SQL, dict(path='a', name='b', description='c', body='d'))
-
-                await cur.execute(SEARCH_SQL, ('boom',))
-                async for row in cur:
-                    print(row)
+                await cur.execute(INSERT_ROW_SQL, dict(path='foo', name='bar', url='/', description='x', body='boom'))
+                await cur.execute(INSERT_ROW_SQL, dict(path='a', name='b', url='/', description='c', body='d'))
 
 
 def populate_dummy_db():

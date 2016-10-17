@@ -3,7 +3,6 @@ from pathlib import Path
 import trafaret as t
 from aiohttp import web
 from aiopg.pool import _create_pool
-from sqlalchemy.engine.url import URL
 from trafaret_config import read_and_validate
 
 from .routes import setup_routes
@@ -37,14 +36,8 @@ def pg_dsn(db_settings: dict) -> str:
     :param db_settings: dict of connection settings, see SETTINGS_STRUCTURE for definition
     :return: DSN url suitable for sqlalchemy and aiopg.
     """
-    return str(URL(
-        database=db_settings['name'],
-        password=db_settings['password'],
-        host=db_settings['host'],
-        port=db_settings['port'],
-        username=db_settings['user'],
-        drivername='postgres',
-    ))
+    dsn = 'dbname={name} user={user} password={password} host={host} port={port}'
+    return dsn.format(**db_settings)
 
 
 async def startup(app: web.Application):
