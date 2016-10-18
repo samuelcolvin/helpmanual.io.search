@@ -6,7 +6,7 @@ After=network.target
 User=root
 Group=www-data
 WorkingDirectory=/root/helpmanual.io.search/
-ExecStart=env/bin/gunicorn -b unix:/tmp/gunicorn.sock -k aiohttp.worker.GunicornWebWorker -t 60 conf.app:app
+ExecStart=/root/helpmanual.io.search/env/bin/gunicorn -b unix:/tmp/gunicorn.sock -k aiohttp.worker.GunicornWebWorker -t 60 conf.app:app
 
 [Install]
 WantedBy=multi-user.target

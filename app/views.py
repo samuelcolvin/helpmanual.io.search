@@ -39,13 +39,10 @@ async def index(request):
         async with request.app['pg_pool'].acquire() as conn:
             async with conn.cursor() as cur:
                 await cur.execute(SEARCH_SQL, convert_to_search_query(query))
-                async for uri, name, description, exact_match, rank_exact, rank_startswith in cur:
+                async for uri, name, description, *_ in cur:
                     data.append({
                         'uri': uri,
                         'name': name,
                         'descr': description,
-                        'exact_match': exact_match,
-                        'rank_exact': rank_exact,
-                        'rank_startswith': rank_startswith,
                     })
     return json_response(data)

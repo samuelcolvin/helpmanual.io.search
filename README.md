@@ -23,5 +23,11 @@ virtualenv -p /usr/bin/python3.5 env
 search env/bin/activate
 pip install -r requirements.txt
 
+
+cp conf/gunicorn.service /etc/systemd/system/
+systemctl enable gunicorn
+
+cp conf/nginx.conf /etc/nginx/sites-enabled/default
+nginx -t
 service nginx start
 ```
