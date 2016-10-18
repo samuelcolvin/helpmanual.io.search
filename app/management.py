@@ -1,21 +1,25 @@
 import asyncio
+import json
 import psycopg2
+from datetime import datetime
+from aiohttp import ClientSession, ClientResponse, FlowControlStreamReader
 from aiopg import create_pool
 
 from .main import load_settings, pg_dsn
 
 SETUP_SQL = """
-CREATE FUNCTION create_tsvector(name text, description text, body text) RETURNS tsvector AS $$
+CREATE FUNCTION create_tsvector(name text, description text, keywords text, body text) RETURNS tsvector AS $$
     BEGIN
     RETURN  setweight(to_tsvector(name), 'A')        ||
             setweight(to_tsvector(description), 'B') ||
-            setweight(to_tsvector(body), 'C');
+            setweight(to_tsvector(keywords), 'C') ||
+            setweight(to_tsvector(body), 'D');
     END;
 $$ LANGUAGE plpgsql;
 
 CREATE TABLE entries (
-    url character varying(31) PRIMARY KEY,
-    name character varying(31) NOT NULL,
+    uri character varying(63) PRIMARY KEY,
+    name character varying(63) NOT NULL,
     vector tsvector NOT NULL,
     description text
 );
@@ -68,3 +72,72 @@ def prepare_database(delete_existing: bool) -> bool:
     loop = asyncio.get_event_loop()
     loop.run_until_complete(create_tables(db))
     return True
+
+
+ARGS_SQL = (
+    b"("
+    b"%(uri)s,"
+    b"%(name)s,"
+    b"%(description)s,"
+    b"create_tsvector(%(name)s, %(description)s, %(keywords)s, %(body)s)"
+    b")"
+)
+
+INSERT_ROW_SQL = b'INSERT INTO entries (uri, name, description, vector) VALUES '
+
+
+class LongFlowControlStreamReader(FlowControlStreamReader):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._limit = 2 ** 32
+
+
+class LongClientResponse(ClientResponse):
+    flow_control_class = LongFlowControlStreamReader
+
+
+async def _update_index(loop):
+    count = 0
+    db_settings = load_settings()['database']
+    url_base = 'https://helpmanual.io/search/{}.json'
+
+    async with ClientSession(loop=loop, response_class=LongClientResponse) as client:
+        async with create_pool(pg_dsn(db_settings), loop=loop) as engine:
+            async with engine.acquire() as conn:
+                async with conn.cursor() as cur:
+                    await cur.execute('BEGIN;')
+                    s = datetime.now()
+                    try:
+                        await cur.execute('DELETE FROM entries;')
+                        for i in range(1, 50):
+                            url = url_base.format(i)
+                            print('downloading {}...'.format(url))
+                            async with client.get(url) as r:
+                                if r.status == 404:
+                                    break
+                                r.raise_for_status()
+                                data = await r.json()
+
+                            print('saving {} entries to db...'.format(len(data)))
+                            args = []
+                            for d in data:
+                                v = await cur.mogrify(ARGS_SQL, d)
+                                args.append(v)
+                                count += 1
+                            await cur.execute(INSERT_ROW_SQL + b','.join(args))
+                            print('{} search indexes stored'.format(count))
+                    except:
+                        await cur.execute('ROLLBACK;')
+                        raise
+                    else:
+                        await cur.execute('COMMIT;')
+                        await cur.execute('VACUUM FULL;')
+                    finally:
+                        tt = (datetime.now() - s).total_seconds()
+                        print('time taken {:0.2f}s'.format(tt))
+
+
+def update_index():
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(_update_index(loop))
+    loop.close()

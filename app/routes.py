@@ -1,6 +1,5 @@
-from .views import index, update
+from .views import index
 
 
 def setup_routes(app):
     app.router.add_get('/', index, name='index')
-    app.router.add_get('/update', update, name='update')
