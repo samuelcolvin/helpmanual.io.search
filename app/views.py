@@ -36,7 +36,7 @@ ALLOWED_ORIGINS = {
     'https://helpmanual.io',
     'http://localhost:8000',
 }
-
+MAX_DESCRIPTION_LENGTH = 70
 
 async def index(request):
     data = []
@@ -47,8 +47,8 @@ async def index(request):
             async with conn.cursor() as cur:
                 await cur.execute(SEARCH_SQL, convert_to_search_query(query))
                 async for uri, name, src, description, *_ in cur:
-                    if len(description) > 55:
-                        description = description[:52] + '...'
+                    if len(description) > MAX_DESCRIPTION_LENGTH:
+                        description = description[:MAX_DESCRIPTION_LENGTH - 3] + '...'
                     data.append({
                         'uri': uri,
                         'name': name,
