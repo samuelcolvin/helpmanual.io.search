@@ -5,7 +5,7 @@ from aiohttp import web
 from aiopg.pool import _create_pool
 from trafaret_config import read_and_validate
 
-from .routes import setup_routes
+from .views import index
 
 THIS_DIR = Path(__file__).parent
 BASE_DIR = THIS_DIR.parent
@@ -56,5 +56,5 @@ def create_app(loop):
     app.on_startup.append(startup)
     app.on_cleanup.append(cleanup)
 
-    setup_routes(app)
+    app.router.add_get('/{name:.*}', index, name='index')
     return app
