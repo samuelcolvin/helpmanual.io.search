@@ -19,6 +19,7 @@ $$ LANGUAGE plpgsql;
 CREATE TABLE entries (
     uri character varying(63) PRIMARY KEY,
     name character varying(63) NOT NULL,
+    src character varying(10) NOT NULL,
     vector tsvector NOT NULL,
     description text
 );
@@ -77,12 +78,13 @@ ARGS_SQL = (
     b"("
     b"%(uri)s,"
     b"%(name)s,"
+    b"%(src)s,"
     b"%(description)s,"
     b"create_tsvector(%(name)s, %(description)s, %(keywords)s, %(body)s)"
     b")"
 )
 
-INSERT_ROW_SQL = b'INSERT INTO entries (uri, name, description, vector) VALUES '
+INSERT_ROW_SQL = b'INSERT INTO entries (uri, name, src, description, vector) VALUES '
 
 
 class LongFlowControlStreamReader(FlowControlStreamReader):
@@ -98,7 +100,7 @@ class LongClientResponse(ClientResponse):
 async def _update_index(loop):
     count = 0
     db_settings = load_settings()['database']
-    url_base = 'https://helpmanual.io/search/{}.json'
+    url_base = 'https://helpmanual.io/search/{:02}.json'
 
     async with ClientSession(loop=loop, response_class=LongClientResponse) as client:
         async with create_pool(pg_dsn(db_settings), loop=loop) as engine:

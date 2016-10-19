@@ -6,6 +6,7 @@ from aiohttp.web_reqrep import json_response
 SEARCH_SQL = """\
 SELECT uri,
        name,
+       src,
        description,
        name = %(name)s as name_exact,
        ts_rank_cd(vector, q_exact, 16) AS r_exact,
@@ -45,11 +46,14 @@ async def index(request):
         async with request.app['pg_pool'].acquire() as conn:
             async with conn.cursor() as cur:
                 await cur.execute(SEARCH_SQL, convert_to_search_query(query))
-                async for uri, name, description, *_ in cur:
+                async for uri, name, src, description, *_ in cur:
+                    if len(description) > 55:
+                        description = description[:52] + '...'
                     data.append({
                         'uri': uri,
                         'name': name,
-                        'descr': description,
+                        'src': src,
+                        'description': description,
                     })
     headers = None
     origin = request.headers.get('origin')
