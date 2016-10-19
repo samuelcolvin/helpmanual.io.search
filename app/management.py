@@ -1,6 +1,7 @@
 import asyncio
-import psycopg2
 from datetime import datetime
+
+import psycopg2
 from aiohttp import ClientSession, ClientResponse, FlowControlStreamReader
 from aiopg import create_pool
 
@@ -97,10 +98,11 @@ class LongClientResponse(ClientResponse):
     flow_control_class = LongFlowControlStreamReader
 
 
-async def _update_index(loop):
+async def _update_index(loop, start_index):
     count = 0
     db_settings = load_settings()['database']
     url_base = 'https://helpmanual.io/search/{:02}.json'
+    print('using start page index {}'.format(start_index))
 
     async with ClientSession(loop=loop, response_class=LongClientResponse) as client:
         async with create_pool(pg_dsn(db_settings), loop=loop) as engine:
@@ -110,7 +112,7 @@ async def _update_index(loop):
                     s = datetime.now()
                     try:
                         await cur.execute('DELETE FROM entries;')
-                        for i in range(1, 50):
+                        for i in range(start_index, 50):
                             url = url_base.format(i)
                             print('downloading {}...'.format(url))
                             async with client.get(url) as r:
@@ -138,7 +140,7 @@ async def _update_index(loop):
                         print('time taken {:0.2f}s'.format(tt))
 
 
-def update_index():
+def update_index(start_index=1):
     loop = asyncio.get_event_loop()
-    loop.run_until_complete(_update_index(loop))
+    loop.run_until_complete(_update_index(loop, start_index))
     loop.close()
