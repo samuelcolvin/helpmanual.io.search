@@ -109,10 +109,11 @@ async def _update_index(loop, start_index):
             async with engine.acquire() as conn:
                 async with conn.cursor() as cur:
                     await cur.execute('BEGIN;')
-                    s = datetime.now()
+                    start = datetime.now()
                     try:
                         await cur.execute('DELETE FROM entries;')
                         for i in range(start_index, 50):
+                            start_file = datetime.now()
                             url = url_base.format(i)
                             print('downloading {}...'.format(url))
                             async with client.get(url) as r:
@@ -129,6 +130,8 @@ async def _update_index(loop, start_index):
                                 count += 1
                             await cur.execute(INSERT_ROW_SQL + b','.join(args))
                             print('{} search indexes stored'.format(count))
+                            tt = (datetime.now() - start_file).total_seconds()
+                            print('{} processed in {:0.2f}s'.format(url, tt))
                     except:
                         await cur.execute('ROLLBACK;')
                         raise
@@ -136,7 +139,7 @@ async def _update_index(loop, start_index):
                         await cur.execute('COMMIT;')
                         await cur.execute('VACUUM FULL;')
                     finally:
-                        tt = (datetime.now() - s).total_seconds()
+                        tt = (datetime.now() - start).total_seconds()
                         print('time taken {:0.2f}s'.format(tt))
 
 
