@@ -1,5 +1,4 @@
 import asyncio
-import json
 import psycopg2
 from datetime import datetime
 from aiohttp import ClientSession, ClientResponse, FlowControlStreamReader

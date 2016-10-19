@@ -15,7 +15,7 @@ FROM entries,
      to_tsquery(%(q_startswith)s) AS q_startswith
 WHERE vector @@ q_startswith
 ORDER BY name_exact DESC, r_exact DESC, r_startswith DESC
-LIMIT 20;
+LIMIT 12;
 """
 
 SPECIAL = re.compile(r'[&|\n\t]')
@@ -29,6 +29,12 @@ def convert_to_search_query(base):
         'q_exact': ' & '.join(parts),
         'q_startswith': ' & '.join(['{0}:*'.format(s) for s in parts])
     }
+
+
+ALLOWED_ORIGINS = {
+    'https://helpmanual.io',
+    'http://localhost:8000',
+}
 
 
 async def index(request):
@@ -45,4 +51,8 @@ async def index(request):
                         'name': name,
                         'descr': description,
                     })
-    return json_response(data)
+    headers = None
+    origin = request.headers.get('origin')
+    if origin in ALLOWED_ORIGINS:
+        headers = {'Access-Control-Allow-Origin': origin}
+    return json_response(data, headers=headers)
