@@ -27,7 +27,7 @@ ORDER BY r_exact DESC, r_startswith DESC
 LIMIT 12;
 """
 
-SPECIAL = re.compile(r'[&|\n\t]')
+SPECIAL = re.compile(r'[&|\n\t\(\)]')
 
 
 def convert_to_search_query(base, exclude):
@@ -35,7 +35,6 @@ def convert_to_search_query(base, exclude):
     parts = [s for s in q.split(' ') if len(s) > 1]
     return {
         'exclude': exclude,
-        'name': base,
         'q_exact': ' & '.join(parts),
         'q_startswith': ' & '.join(['{0}:*'.format(s) for s in parts])
     }
