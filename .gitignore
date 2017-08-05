@@ -11,5 +11,4 @@ htmlcov/
 /dist
 *.egg-info
 docs/_build/
-/aiohttp_devtools/runserver/livereload.js
-testapp/
+activate.prod.sh

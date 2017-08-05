@@ -29,6 +29,8 @@ services:
     environment:
       APP_DB_HOST: postgres
       APP_DB_PASSWORD: docker
+      APP_UPDATE_TOKEN: ${APP_UPDATE_TOKEN}
+    restart: always
     depends_on:
     - postgres
     - logs

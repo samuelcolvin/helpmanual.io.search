@@ -1,4 +1,5 @@
 import logging
+import re
 import traceback
 from time import time
 
@@ -10,6 +11,18 @@ INSERT_SQL = """
 INSERT INTO entries (uri, name, src, description, keywords, body) VALUES
  ($1, $2, $3, $4, $5, $6)
 """
+
+
+def clean(v):
+    """
+    apparently postgres and asyncpg really don't like 0x00, gives:
+
+    CharacterNotInRepertoireError: invalid byte sequence for encoding "UTF8": 0x00
+    """
+    return re.sub('\u0000', '', v)
+
+
+DATA_FIELDS = 'uri', 'name', 'src', 'description', 'keywords', 'body'
 
 
 async def update_index(start, finish, conn, log):
@@ -40,14 +53,9 @@ async def update_index(start, finish, conn, log):
                     log(f'saving {len(data)} entries to db...')
                     args = []
                     for d in data:
-                        args.append((
-                            d['uri'],
-                            d['name'],
-                            d['src'],
-                            d['description'],
-                            d['keywords'],
-                            d['body'],
-                        ))
+                        args.append(
+                            [clean(d[f]) for f in DATA_FIELDS]
+                        )
                     await conn.executemany(INSERT_SQL, args)
                     log(f'{url} processed {len(args)} items in {time() - start_file:0.2f}s')
         except Exception as e:

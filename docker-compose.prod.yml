@@ -1,0 +1,15 @@
+version: '2.1'
+
+services:
+  logs:
+    entrypoint:
+    - '/bin/logspout'
+    - '${LOGSPOUT_ENDPOINT}'
+    ports:
+    - 5001:80
+
+  nginx:
+    build: nginx
+    restart: always
+    ports:
+    - 80:80
