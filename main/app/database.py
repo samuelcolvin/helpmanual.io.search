@@ -23,7 +23,7 @@ async def prepare_database(settings: Settings, overwrite_existing: bool=False) -
         db_exists = await conn.fetchval(DB_EXISTS, settings.db_name)
         if db_exists:
             if not overwrite_existing:
-                logger.info('database "%s" already exists, skipping', settings.db_name)
+                logger.info('database "%s" already exists, skipping setup', settings.db_name)
                 return False
             else:
                 logger.info('database "%s" already exists...', settings.db_name)

@@ -1,4 +1,5 @@
 import asyncio
+import logging
 from pathlib import Path
 
 import asyncpg
@@ -7,6 +8,7 @@ from pydantic import DSN, BaseSettings
 
 from .views import search, update
 
+logger = logging.getLogger('search.main')
 THIS_DIR = Path(__file__).parent
 
 
@@ -30,6 +32,7 @@ async def startup(app: web.Application):
     app.update(
         db=await asyncpg.create_pool(dsn=settings.dsn, loop=loop),
     )
+    logger.info('server running')
 
 
 async def cleanup(app: web.Application):
@@ -46,6 +49,6 @@ def create_app(settings: Settings=None):
     app.on_startup.append(startup)
     app.on_cleanup.append(cleanup)
 
+    app.router.add_get('/q/{q:.*}', search)
     app.router.add_get('/update/{token}/{start:\d+}/{finish:\d+}/', update)
-    app.router.add_get('/{q:.*}', search)
     return app

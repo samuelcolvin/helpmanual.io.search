@@ -21,6 +21,8 @@ services:
     command: postgres -c fsync=off -c full_page_writes=off -c shared_buffers=512MB -c work_mem=32MB -c max_wal_size=512MB
     volumes:
     - pg_data:/var/lib/postgresql/data
+    depends_on:
+    - logs
 
   web:
     build: main
@@ -29,3 +31,4 @@ services:
       APP_DB_PASSWORD: docker
     depends_on:
     - postgres
+    - logs

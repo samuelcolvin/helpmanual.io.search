@@ -1,3 +1,4 @@
+import logging
 import re
 from datetime import datetime
 
@@ -5,10 +6,12 @@ from aiohttp.web import HTTPUnauthorized, Response, StreamResponse
 
 from .update import update_index
 
+logger = logging.getLogger('search.views')
+
 EXACT_MATCH_SQL = """\
 SELECT array_to_json(array_agg(row_to_json(t)))
 FROM (
-  SELECT uri, name, src, left(description, 120) AS description, 1 as q
+  SELECT uri, name, src, left(description, 120) AS description
   FROM entries
   WHERE name = $1
   LIMIT 5
@@ -18,7 +21,7 @@ FROM (
 SEARCH_SQL = """\
 SELECT array_to_json(array_agg(row_to_json(t)))
 FROM (
-  SELECT v.uri, v.name, v.src, left(v.description, 120) AS description, 2 as q
+  SELECT v.uri, v.name, v.src, left(v.description, 120) AS description
   FROM (
     SELECT uri, name, src, description,
            ts_rank_cd(vector, q_exact, 16) AS r_exact,
@@ -68,11 +71,11 @@ async def search(request):
         else:
             data = data1 or data2 or data
 
-    headers = {'Content-Type': 'application/json'}
+    headers = {}
     origin = request.headers.get('origin')
     if origin in ALLOWED_ORIGINS:
         headers = {'Access-Control-Allow-Origin': origin}
-    return Response(text=data, headers=headers)
+    return Response(text=data, content_type='application/json', headers=headers)
 
 
 STREAM_HEAD = b"""\
@@ -103,8 +106,9 @@ async def update(request):
     r.write(STREAM_HEAD)
 
     def log(msg):
-        msg_ = f'{datetime.now():%H:%M:%S} &gt; {msg}\n'
-        r.write(msg_.encode())
+        msg_ = f'{datetime.now():%H:%M:%S} &gt; {msg}'
+        logger.info(msg)
+        r.write((msg_ + '\n').encode())
 
     start, finish = int(request.match_info['start']), int(request.match_info['finish'])
     async with request.app['db'].acquire() as conn:

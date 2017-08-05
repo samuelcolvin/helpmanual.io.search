@@ -1,7 +1,6 @@
 #!/usr/bin/env python3.6
 import asyncio
 import logging
-from datetime import datetime
 
 import asyncpg
 import click
@@ -13,7 +12,7 @@ from app.logs import setup_logging
 from app.main import Settings, create_app
 from app.update import update_index as _update_index
 
-logger = logging.getLogger('search.main')
+logger = logging.getLogger('search.run')
 
 
 @click.group()
