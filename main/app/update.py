@@ -37,9 +37,13 @@ DATA_FIELDS = (
 
 async def update_index(start, finish, conn, log):
     base_url = 'https://helpmanual.io/search/{:02}.json'
+    uris = set()
+    repeated = 0
 
     async with ClientSession() as client:
         try:
+            entries = await conn.fetchval('SELECT COUNT(*) from entries')
+            log(f'{entries} entries in search database before update')
             log('counting files to process...')
             for i in range(start, finish):
                 url = base_url.format(i)
@@ -62,6 +66,11 @@ async def update_index(start, finish, conn, log):
 
                     args = []
                     for d in data:
+                        uri = d['uri']
+                        if uri in uris:
+                            repeated += 1
+                            continue
+                        uris.add(uri)
                         args.append(
                             [clean(d[f], limit) for f, limit in DATA_FIELDS]
                         )
@@ -69,12 +78,12 @@ async def update_index(start, finish, conn, log):
                     log(f'processed {len(args)} items in {time() - start_file:0.2f}s')
             log(f'finished adding entries, running full vacuum...')
             await conn.execute('VACUUM FULL;')
-            entries = await conn.fetchval('SELECT COUNT(*) from entries')
-            log(f'{entries} entries in search database')
         except Exception as e:
             trace = ''.join(traceback.format_exc())
             msg = f'error updating index, {e.__class__.__name__}: {e}\n{trace}'
             logger.exception(msg)
             log(msg)
         finally:
+            entries = await conn.fetchval('SELECT COUNT(*) from entries')
+            log(f'{entries} entries in search database after update, repeated entries {repeated}')
             log(f'total time taken {time() - start_all:0.2f}s')

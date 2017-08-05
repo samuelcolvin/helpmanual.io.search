@@ -94,7 +94,8 @@ STREAM_HEAD = b"""\
     document.body.style.backgroundColor = auto_scroll ? "white" : "#e8e8e8";
   }, 50)
 </script>
-<body onclick="auto_scroll = !auto_scroll">"""
+<body onclick="auto_scroll = !auto_scroll">
+"""
 
 
 async def update(request):
@@ -103,11 +104,17 @@ async def update(request):
     r = StreamResponse()
     r.content_type = 'text/html'
     await r.prepare(request)
-    r.write(STREAM_HEAD)
+    divider = '>'
+    if 'html' in request.headers.get('Accept', ''):
+        divider = '&gt;'
+        r.write(STREAM_HEAD)
 
     def log(msg):
         logger.info(msg)
-        r.write(f'{datetime.now():%H:%M:%S} &gt; {msg}\n'.encode())
+        try:
+            r.write(f'{datetime.now():%H:%M:%S} {divider} {msg}\n'.encode())
+        except RuntimeError as e:
+            logger.warning('unable to write to response: %s', e)
 
     start, finish = int(request.match_info['start']), int(request.match_info['finish'])
     async with request.app['db'].acquire() as conn:
