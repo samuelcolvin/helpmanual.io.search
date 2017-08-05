@@ -5,7 +5,7 @@ import asyncpg
 from aiohttp import web
 from pydantic import DSN, BaseSettings
 
-from .views import index
+from .views import search, update
 
 THIS_DIR = Path(__file__).parent
 
@@ -19,7 +19,9 @@ class Settings(BaseSettings):
     db_driver = 'postgres'
     db_query: dict = None
     dsn: DSN = None
+
     models_sql = (THIS_DIR / 'models.sql').read_text()
+    update_token = 'testing'
 
 
 async def startup(app: web.Application):
@@ -44,5 +46,6 @@ def create_app(settings: Settings=None):
     app.on_startup.append(startup)
     app.on_cleanup.append(cleanup)
 
-    app.router.add_get('/{q:.*}', index, name='index')
+    app.router.add_get('/update/{token}/{start:\d+}/{finish:\d+}/', update)
+    app.router.add_get('/{q:.*}', search)
     return app

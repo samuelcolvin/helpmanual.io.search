@@ -1,7 +1,9 @@
 #!/usr/bin/env python3.6
 import asyncio
 import logging
+from datetime import datetime
 
+import asyncpg
 import click
 import uvloop
 from aiohttp.web import run_app
@@ -9,6 +11,7 @@ from aiohttp.web import run_app
 from app.database import prepare_database as _prepare_database
 from app.logs import setup_logging
 from app.main import Settings, create_app
+from app.update import update_index as _update_index
 
 logger = logging.getLogger('search.main')
 
@@ -17,7 +20,7 @@ logger = logging.getLogger('search.main')
 @click.pass_context
 def cli(ctx):
     """
-    Run morpheus
+    Run helpmanual search
     """
     pass
 
@@ -49,6 +52,26 @@ def reset_db(force):
     loop = asyncio.get_event_loop()
     logger.info('running prepare_database, force: %r...', force)
     loop.run_until_complete(_prepare_database(settings, force))
+
+
+async def __update_index(start, finish):
+    settings = Settings()
+    pool = await asyncpg.create_pool(dsn=settings.dsn)
+
+    async with pool.acquire() as conn:
+        await _update_index(start, finish, conn, print)
+
+    await pool.close()
+
+
+@cli.command()
+@click.option('--start', type=int, default=1)
+@click.option('--finish', type=int, default=100)
+def update_index(start, finish):
+    asyncio.get_event_loop().close()
+    asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(__update_index(start, finish))
 
 
 if __name__ == '__main__':

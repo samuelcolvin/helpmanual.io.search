@@ -1,24 +1,36 @@
 import re
+from datetime import datetime
 
-from aiohttp.web_response import json_response
+from aiohttp.web import HTTPUnauthorized, Response, StreamResponse
+
+from .update import update_index
 
 EXACT_MATCH_SQL = """\
-SELECT uri, name, src, description
-FROM entries
-WHERE name = $1
-LIMIT 5;
+SELECT array_to_json(array_agg(row_to_json(t)))
+FROM (
+  SELECT uri, name, src, left(description, 120) AS description, 1 as q
+  FROM entries
+  WHERE name = $1
+  LIMIT 5
+) t;
 """
 
 SEARCH_SQL = """\
-SELECT uri, name, src, description,
-       ts_rank_cd(vector, q_exact, 16) AS r_exact,
-       ts_rank_cd(vector, q_startswith, 16) AS r_startswith
-FROM entries,
-     to_tsquery(%(q_exact)s) AS q_exact,
-     to_tsquery(%(q_startswith)s) AS q_startswith
-WHERE vector @@ q_startswith AND name != %(exclude)s
-ORDER BY r_exact DESC, r_startswith DESC
-LIMIT 12;
+SELECT array_to_json(array_agg(row_to_json(t)))
+FROM (
+  SELECT v.uri, v.name, v.src, left(v.description, 120) AS description, 2 as q
+  FROM (
+    SELECT uri, name, src, description,
+           ts_rank_cd(vector, q_exact, 16) AS r_exact,
+           ts_rank_cd(vector, q_startswith, 16) AS r_startswith
+    FROM entries,
+         to_tsquery($1) AS q_exact,
+         to_tsquery($2) AS q_startswith
+    WHERE vector @@ q_startswith AND name != $3
+    ORDER BY r_exact DESC, r_startswith DESC
+    LIMIT 12
+  ) v
+) t;
 """
 
 SPECIAL = re.compile(r'[&|\n\t\(\)]')
@@ -27,51 +39,74 @@ SPECIAL = re.compile(r'[&|\n\t\(\)]')
 def convert_to_search_query(base, exclude):
     q = SPECIAL.sub('', base)
     parts = [s for s in q.split(' ') if len(s) > 1]
-    return {
-        'exclude': exclude,
-        'q_exact': ' & '.join(parts),
-        'q_startswith': ' & '.join(['{0}:*'.format(s) for s in parts])
-    }
+    return (
+        ' & '.join(parts),
+        ' & '.join([f'{s}:*' for s in parts]),
+        exclude,
+    )
 
 
-ALLOWED_ORIGINS = {
-    'https://helpmanual.io',
-    'http://localhost:8000',
-}
-MAX_DESCRIPTION_LENGTH = 120
+ALLOWED_ORIGINS = 'https://helpmanual.io', 'http://localhost:8000'
 
 
-def truncate(d):
-    if len(d) > MAX_DESCRIPTION_LENGTH:
-        d = d[:MAX_DESCRIPTION_LENGTH - 3] + '...'
-    return d
-
-
-async def index(request):
-    data = []
+async def search(request):
+    data = '[]'
     exclude = '_'
     query = request.match_info['q']
     if query:
         async with request.app['db'].acquire() as conn:
-            for uri, name, src, description in await conn.fetch(EXACT_MATCH_SQL, query[:50]):
-                data.append({
-                    'uri': uri,
-                    'name': name,
-                    'src': src,
-                    'description': truncate(description),
-                })
+            name = query[:50]
+            data1 = await conn.fetchval(EXACT_MATCH_SQL, name)
+            if data1:
                 exclude = name
 
-                # await cur.execute(SEARCH_SQL, convert_to_search_query(query, exclude))
-                # async for uri, name, src, description, *_ in cur:
-                #     data.append({
-                #         'uri': uri,
-                #         'name': name,
-                #         'src': src,
-                #         'description': truncate(description),
-                #     })
-    headers = None
+            args = convert_to_search_query(query, exclude)
+            data2 = await conn.fetchval(SEARCH_SQL, *args)
+
+        if data1 and data2:
+            data = data1[:-1] + ',' + data2[1:]
+        else:
+            data = data1 or data2 or data
+
+    headers = {'Content-Type': 'application/json'}
     origin = request.headers.get('origin')
     if origin in ALLOWED_ORIGINS:
         headers = {'Access-Control-Allow-Origin': origin}
-    return json_response(data, headers=headers)
+    return Response(text=data, headers=headers)
+
+
+STREAM_HEAD = b"""\
+<!DOCTYPE html>
+<title>helpmanual search update</title>
+<style>
+  html {font-family: monospace; white-space: pre-wrap; margin: 0 50px 80px;} 
+  body {margin: 0}
+  h1 {margin: 0}
+</style>
+<h1>helpmanual search update</h1>
+<script>
+  var auto_scroll = true
+  setInterval(function(){
+    auto_scroll && window.scrollTo(0,document.body.scrollHeight)
+    document.body.style.backgroundColor = auto_scroll ? "white" : "#e8e8e8";
+  }, 50)
+</script>
+<body onclick="auto_scroll = !auto_scroll">"""
+
+
+async def update(request):
+    if request.match_info['token'] != request.app['settings'].update_token:
+        raise HTTPUnauthorized(text='invalid token')
+    r = StreamResponse()
+    r.content_type = 'text/html'
+    await r.prepare(request)
+    r.write(STREAM_HEAD)
+
+    def log(msg):
+        msg_ = f'{datetime.now():%H:%M:%S} &gt; {msg}\n'
+        r.write(msg_.encode())
+
+    start, finish = int(request.match_info['start']), int(request.match_info['finish'])
+    async with request.app['db'].acquire() as conn:
+        await update_index(start, finish, conn, log)
+    return r
