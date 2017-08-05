@@ -1,0 +1,12 @@
+#aioredis==0.3.3
+async-timeout==1.2.1
+pydantic==0.4
+click==6.7
+
+# aiohttp
+aiohttp==2.2.5
+cchardet==2.1.1
+uvloop==0.8.0
+
+# postgres
+asyncpg==0.12.0

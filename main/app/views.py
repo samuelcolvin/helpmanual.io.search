@@ -1,22 +1,16 @@
 import re
 
-from aiohttp.web_reqrep import json_response
+from aiohttp.web_response import json_response
 
 EXACT_MATCH_SQL = """\
-SELECT uri,
-       name,
-       src,
-       description
+SELECT uri, name, src, description
 FROM entries
-WHERE name = %s
+WHERE name = $1
 LIMIT 5;
 """
 
 SEARCH_SQL = """\
-SELECT uri,
-       name,
-       src,
-       description,
+SELECT uri, name, src, description,
        ts_rank_cd(vector, q_exact, 16) AS r_exact,
        ts_rank_cd(vector, q_startswith, 16) AS r_startswith
 FROM entries,
@@ -47,7 +41,7 @@ ALLOWED_ORIGINS = {
 MAX_DESCRIPTION_LENGTH = 120
 
 
-def shorten_description(d):
+def truncate(d):
     if len(d) > MAX_DESCRIPTION_LENGTH:
         d = d[:MAX_DESCRIPTION_LENGTH - 3] + '...'
     return d
@@ -56,28 +50,26 @@ def shorten_description(d):
 async def index(request):
     data = []
     exclude = '_'
-    query = request.match_info['name']
+    query = request.match_info['q']
     if query:
-        async with request.app['pg_pool'].acquire() as conn:
-            async with conn.cursor() as cur:
-                await cur.execute(EXACT_MATCH_SQL, (query[:50],))
-                async for uri, name, src, description in cur:
-                    data.append({
-                        'uri': uri,
-                        'name': name,
-                        'src': src,
-                        'description': shorten_description(description),
-                    })
-                    exclude = name
+        async with request.app['db'].acquire() as conn:
+            for uri, name, src, description in await conn.fetch(EXACT_MATCH_SQL, query[:50]):
+                data.append({
+                    'uri': uri,
+                    'name': name,
+                    'src': src,
+                    'description': truncate(description),
+                })
+                exclude = name
 
-                await cur.execute(SEARCH_SQL, convert_to_search_query(query, exclude))
-                async for uri, name, src, description, *_ in cur:
-                    data.append({
-                        'uri': uri,
-                        'name': name,
-                        'src': src,
-                        'description': shorten_description(description),
-                    })
+                # await cur.execute(SEARCH_SQL, convert_to_search_query(query, exclude))
+                # async for uri, name, src, description, *_ in cur:
+                #     data.append({
+                #         'uri': uri,
+                #         'name': name,
+                #         'src': src,
+                #         'description': truncate(description),
+                #     })
     headers = None
     origin = request.headers.get('origin')
     if origin in ALLOWED_ORIGINS:

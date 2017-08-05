@@ -1,4 +1,4 @@
-aiohttp==1.0.5
-aiopg==0.12.0
-gunicorn==19.6.0
-trafaret-config==0.1.1
+-r main/requirements.txt
+#-r tests/requirements.txt
+aiohttp-devtools==0.5
+ipython
