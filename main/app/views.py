@@ -106,9 +106,8 @@ async def update(request):
     r.write(STREAM_HEAD)
 
     def log(msg):
-        msg_ = f'{datetime.now():%H:%M:%S} &gt; {msg}'
         logger.info(msg)
-        r.write((msg_ + '\n').encode())
+        r.write(f'{datetime.now():%H:%M:%S} &gt; {msg}\n'.encode())
 
     start, finish = int(request.match_info['start']), int(request.match_info['finish'])
     async with request.app['db'].acquire() as conn:

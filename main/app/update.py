@@ -13,16 +13,26 @@ INSERT INTO entries (uri, name, src, description, keywords, body) VALUES
 """
 
 
-def clean(v):
+def clean(v, limit):
     """
     apparently postgres and asyncpg really don't like 0x00, gives:
 
     CharacterNotInRepertoireError: invalid byte sequence for encoding "UTF8": 0x00
     """
-    return re.sub('\u0000', '', v)
+    v = re.sub('\u0000', '', v)
+    if limit and len(v) > limit:
+        v = v[:limit]
+    return v
 
 
-DATA_FIELDS = 'uri', 'name', 'src', 'description', 'keywords', 'body'
+DATA_FIELDS = (
+    ('uri', 63),
+    ('name', 63),
+    ('src', 20),
+    ('description', None),
+    ('keywords', None),
+    ('body', None),
+)
 
 
 async def update_index(start, finish, conn, log):
@@ -41,29 +51,30 @@ async def update_index(start, finish, conn, log):
             log(f'getting files {start} to {finish}')
             async with conn.transaction():
                 start_all = time()
-                await conn.execute('DELETE FROM entries;')
+                await conn.execute('DELETE FROM entries')
                 for i in range(start, finish):
                     start_file = time()
                     url = base_url.format(i)
-                    log(f'downloading {url}...')
+                    log(f'processing {url}...')
                     async with client.get(url) as r:
                         r.raise_for_status()
                         data = await r.json()
 
-                    log(f'saving {len(data)} entries to db...')
                     args = []
                     for d in data:
                         args.append(
-                            [clean(d[f]) for f in DATA_FIELDS]
+                            [clean(d[f], limit) for f, limit in DATA_FIELDS]
                         )
                     await conn.executemany(INSERT_SQL, args)
-                    log(f'{url} processed {len(args)} items in {time() - start_file:0.2f}s')
+                    log(f'processed {len(args)} items in {time() - start_file:0.2f}s')
+            log(f'finished adding entries, running full vacuum...')
+            await conn.execute('VACUUM FULL;')
+            entries = await conn.fetchval('SELECT COUNT(*) from entries')
+            log(f'{entries} entries in search database')
         except Exception as e:
             trace = ''.join(traceback.format_exc())
             msg = f'error updating index, {e.__class__.__name__}: {e}\n{trace}'
             logger.exception(msg)
             log(msg)
-        else:
-            await conn.execute('VACUUM FULL;')
         finally:
             log(f'total time taken {time() - start_all:0.2f}s')
