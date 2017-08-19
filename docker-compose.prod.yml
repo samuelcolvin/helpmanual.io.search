@@ -5,8 +5,6 @@ services:
     entrypoint:
     - '/bin/logspout'
     - '${LOGSPOUT_ENDPOINT}'
-    ports:
-    - 5001:80
 
   nginx:
     build: nginx
