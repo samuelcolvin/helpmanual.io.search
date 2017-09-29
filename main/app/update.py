@@ -26,8 +26,8 @@ def clean(v, limit):
 
 
 DATA_FIELDS = (
-    ('uri', 63),
-    ('name', 63),
+    ('uri', 127),
+    ('name', 127),
     ('src', 20),
     ('description', None),
     ('keywords', None),

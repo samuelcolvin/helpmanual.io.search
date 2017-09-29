@@ -36,7 +36,7 @@ FROM (
 ) t;
 """
 
-SPECIAL = re.compile(r'[&|\n\t\(\)]')
+SPECIAL = re.compile(r'[&|\n\t()\'\\]')
 
 
 def convert_to_search_query(base, exclude):
@@ -64,6 +64,7 @@ async def search(request):
                 exclude = name
 
             args = convert_to_search_query(query, exclude)
+            logger.info('query arguments: %s', args)
             data2 = await conn.fetchval(SEARCH_SQL, *args)
 
         if data1 and data2:

@@ -2,8 +2,8 @@ DROP SCHEMA public CASCADE;
 CREATE SCHEMA public;
 
 CREATE TABLE entries (
-  uri character varying(63) PRIMARY KEY,
-  name character varying(63) NOT NULL,
+  uri character varying(127) PRIMARY KEY,
+  name character varying(127) NOT NULL,
   src character varying(20) NOT NULL,
   vector tsvector NOT NULL,
   description text,
