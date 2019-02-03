@@ -1,13 +1,30 @@
 version: '2.1'
 
 services:
-  logs:
-    entrypoint:
-    - '/bin/logspout'
-    - '${LOGSPOUT_ENDPOINT}'
+  postgres:
+    logging:
+      driver: awslogs
+      options:
+        awslogs-region: ${AWS_DEFAULT_REGION}
+        awslogs-group: "helpmanual"
+        awslogs-stream: "helpmanual-postgres-${VERSION}"
+
+  web:
+    logging:
+      driver: awslogs
+      options:
+        awslogs-region: ${AWS_DEFAULT_REGION}
+        awslogs-group: "helpmanual"
+        awslogs-stream: "helpmanual-web-${VERSION}"
 
   nginx:
     build: nginx
     restart: always
     ports:
     - 80:80
+    logging:
+      driver: awslogs
+      options:
+        awslogs-region: ${AWS_DEFAULT_REGION}
+        awslogs-group: "helpmanual"
+        awslogs-stream: "helpmanual-nginx-${VERSION}"

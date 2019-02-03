@@ -4,3 +4,7 @@ THIS_DIR=$(dirname "$0")
 
 echo ""
 eval "${THIS_DIR}/compose up -d --build $@"
+
+echo "docker compose up, waiting for container to come up..."
+sleep 5
+docker ps

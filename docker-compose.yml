@@ -4,25 +4,15 @@ volumes:
  pg_data: {}
 
 services:
-  logs:
-    image: gliderlabs/logspout
-    environment:
-      SYSLOG_HOSTNAME: helpmanual_search
-    volumes:
-    - /var/run/docker.sock:/var/run/docker.sock:ro
-    restart: always
-
   postgres:
-    image: postgres:9.6-alpine
+    command: postgres -c fsync=off -c full_page_writes=off -c shared_buffers=128MB -c work_mem=32MB -c max_wal_size=64MB
+    image: postgres:11-alpine
     restart: always
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: docker
-    command: postgres -c fsync=off -c full_page_writes=off -c shared_buffers=512MB -c work_mem=32MB -c max_wal_size=512MB
     volumes:
     - pg_data:/var/lib/postgresql/data
-    depends_on:
-    - logs
 
   web:
     build: main
@@ -33,4 +23,3 @@ services:
     restart: always
     depends_on:
     - postgres
-    - logs
