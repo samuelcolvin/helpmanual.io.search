@@ -1,4 +1,4 @@
-#!/usr/bin/env python3.6
+#!/usr/bin/env python3
 import asyncio
 import logging
 
@@ -39,7 +39,7 @@ def web():
     loop.run_until_complete(_prepare_database(settings))
     logger.info('starting server...')
     app = create_app(settings)
-    run_app(app, port=8000, loop=loop, print=lambda v: None, access_log=None)
+    run_app(app, port=8000, print=lambda v: None, access_log=None)
 
 
 @cli.command()

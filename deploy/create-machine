@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+
+if [ -z ${AWS_ACCESS_KEY_ID+x} ]; then
+  echo 'Error: $AWS_ACCESS_KEY_ID not set'
+  exit 2
+fi
+
+if [ -z ${AWS_SECRET_ACCESS_KEY+x} ]; then
+  echo 'Error: $AWS_SECRET_ACCESS_KEY not set'
+  exit 2
+fi
+
+AWS_DEVICE_NAME='helpmanual'
+AWS_INSTANCE_TYPE='t2.nano'
+AWS_ROOT_SIZE='12'
+AWS_DEFAULT_REGION='us-east-1'
+
+docker-machine create --driver amazonec2 helpmanual

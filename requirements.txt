@@ -1,4 +1,4 @@
 -r main/requirements.txt
-#-r tests/requirements.txt
-aiohttp-devtools==0.5
+aiohttp-devtools
+devtools
 ipython

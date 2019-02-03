@@ -12,14 +12,6 @@ isort:
 lint:
 	flake8 app/ tests/
 
-.PHONY: test
-test:
-	py.test --cov=app --isort
-
-.PHONY: test-buildcov
-test-buildcov:
-	py.test --cov=app && (echo "building coverage html, view at './htmlcov/index.html'"; coverage html)
-
 .PHONY: reset-db
 reset-db:
 	python -c "from app.management import prepare_database; prepare_database(True)"
