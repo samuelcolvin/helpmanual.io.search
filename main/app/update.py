@@ -29,7 +29,7 @@ DATA_FIELDS = (
     ('uri', 127),
     ('name', 127),
     ('src', 20),
-    ('description', None),
+    ('description', None),  # TODO set these to something sensible to avoid problems with memory
     ('keywords', None),
     ('body', None),
 )

@@ -12,7 +12,7 @@ services:
     - '-c'
     - 'full_page_writes=off'
     - '-c'
-    - 'shared_buffers=128MB'
+    - 'shared_buffers=256MB'
     - '-c'
     - 'max_wal_senders=3'
     - '-c'
