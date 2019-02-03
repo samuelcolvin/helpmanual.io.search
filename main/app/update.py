@@ -43,23 +43,23 @@ async def update_index(start, finish, conn, log):
     async with ClientSession() as client:
         try:
             entries = await conn.fetchval('SELECT COUNT(*) from entries')
-            log(f'{entries} entries in search database before update')
-            log('counting files to process...')
+            await log(f'{entries} entries in search database before update')
+            await log('counting files to process...')
             for i in range(start, finish):
                 url = base_url.format(i)
                 async with client.head(url) as r:
-                    # log(f'{url}: {r.status}')
+                    # await log(f'{url}: {r.status}')
                     if r.status == 404:
                         finish = i
                         break
-            log(f'getting files {start} to {finish}')
+            await log(f'getting files {start} to {finish}')
             async with conn.transaction():
                 start_all = time()
                 await conn.execute('DELETE FROM entries')
                 for i in range(start, finish):
                     start_file = time()
                     url = base_url.format(i)
-                    log(f'processing {url}...')
+                    await log(f'processing {url}...')
                     async with client.get(url) as r:
                         r.raise_for_status()
                         data = await r.json()
@@ -75,15 +75,15 @@ async def update_index(start, finish, conn, log):
                             [clean(d[f], limit) for f, limit in DATA_FIELDS]
                         )
                     await conn.executemany(INSERT_SQL, args)
-                    log(f'processed {len(args)} items in {time() - start_file:0.2f}s')
-            log(f'finished adding entries, running full vacuum...')
+                    await log(f'processed {len(args)} items in {time() - start_file:0.2f}s')
+            await log(f'finished adding entries, running full vacuum...')
             await conn.execute('VACUUM FULL;')
         except Exception as e:
             trace = ''.join(traceback.format_exc())
             msg = f'error updating index, {e.__class__.__name__}: {e}\n{trace}'
-            logger.exception(msg)
-            log(msg)
+            await logger.exception(msg)
+            await log(msg)
         finally:
             entries = await conn.fetchval('SELECT COUNT(*) from entries')
-            log(f'{entries} entries in search database after update, repeated entries {repeated}')
-            log(f'total time taken {time() - start_all:0.2f}s')
+            await log(f'{entries} entries in search database after update, repeated entries {repeated}')
+            await log(f'total time taken {time() - start_all:0.2f}s')

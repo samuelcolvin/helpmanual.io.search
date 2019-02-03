@@ -83,7 +83,7 @@ STREAM_HEAD = b"""\
 <!DOCTYPE html>
 <title>helpmanual search update</title>
 <style>
-  html {font-family: monospace; white-space: pre-wrap; margin: 0 50px 80px;} 
+  html {font-family: monospace; white-space: pre-wrap; margin: 0 50px 80px;}
   body {margin: 0}
   h1 {margin: 0}
 </style>
@@ -108,12 +108,12 @@ async def update(request):
     divider = '>'
     if 'html' in request.headers.get('Accept', ''):
         divider = '&gt;'
-        r.write(STREAM_HEAD)
+        await r.write(STREAM_HEAD)
 
-    def log(msg):
+    async def log(msg):
         logger.info(msg)
         try:
-            r.write(f'{datetime.now():%H:%M:%S} {divider} {msg}\n'.encode())
+            await r.write(f'{datetime.now():%H:%M:%S} {divider} {msg}\n'.encode())
         except RuntimeError as e:
             logger.warning('unable to write to response: %s', e)
 

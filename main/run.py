@@ -57,8 +57,11 @@ async def __update_index(start, finish):
     settings = Settings()
     pool = await asyncpg.create_pool(dsn=settings.dsn)
 
+    async def log(msg):
+        print(msg)
+
     async with pool.acquire() as conn:
-        await _update_index(start, finish, conn, print)
+        await _update_index(start, finish, conn, log)
 
     await pool.close()
 
