@@ -2,6 +2,8 @@
 set -e
 THIS_DIR=$(dirname "$0")
 
+export VERSION="`git rev-parse --short HEAD`-`date +%Y-%m-%dT%Hh%Mm%Ss`"
+echo "VERSION: $VERSION"
 echo ""
 eval "${THIS_DIR}/compose up -d --build $@"
 

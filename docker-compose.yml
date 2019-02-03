@@ -5,7 +5,22 @@ volumes:
 
 services:
   postgres:
-    command: postgres -c fsync=off -c full_page_writes=off -c shared_buffers=128MB -c work_mem=32MB -c max_wal_size=64MB
+    command:
+    - 'postgres'
+    - '-c'
+    - 'fsync=off'
+    - '-c'
+    - 'full_page_writes=off'
+    - '-c'
+    - 'shared_buffers=128MB'
+    - '-c'
+    - 'max_wal_senders=3'
+    - '-c'
+    - 'max_connections=10'
+    - '-c'
+    - 'work_mem=32MB'
+    - '-c'
+    - 'max_wal_size=64MB'
     image: postgres:11-alpine
     restart: always
     environment:

@@ -6,7 +6,7 @@ import asyncpg
 from aiohttp import web
 from pydantic import DSN, BaseSettings
 
-from .views import search, update
+from .views import search, update, delete_entries
 
 logger = logging.getLogger('search.main')
 THIS_DIR = Path(__file__).parent
@@ -30,7 +30,7 @@ async def startup(app: web.Application):
     settings: Settings = app['settings']
     loop = app.loop or asyncio.get_event_loop()
     app.update(
-        db=await asyncpg.create_pool(dsn=settings.dsn, loop=loop),
+        db=await asyncpg.create_pool(dsn=settings.dsn, loop=loop, min_size=4, max_size=4),
     )
     logger.info('server running')
 
@@ -50,5 +50,6 @@ def create_app(settings: Settings=None):
     app.on_cleanup.append(cleanup)
 
     app.router.add_get('/q/{q:.*}', search)
-    app.router.add_get('/update/{token}/{start:\d+}/{finish:\d+}/', update)
+    app.router.add_get(r'/update/{token}/{start:\d+}/{finish:\d+}/', update)
+    app.router.add_post('/delete/{token}/', delete_entries)
     return app

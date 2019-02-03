@@ -60,15 +60,14 @@ async def __update_index(start, finish):
     async def log(msg):
         print(msg)
 
-    async with pool.acquire() as conn:
-        await _update_index(start, finish, conn, log)
+    await _update_index(start, finish, pool, log)
 
     await pool.close()
 
 
 @cli.command()
 @click.option('--start', type=int, default=1)
-@click.option('--finish', type=int, default=100)
+@click.option('--finish', type=int, default=200)
 def update_index(start, finish):
     asyncio.get_event_loop().close()
     asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())

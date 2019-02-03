@@ -6,7 +6,7 @@ if [ "$MODE" != "PRODUCTION" ]; then
 fi
 export COMMIT=`git rev-parse HEAD`
 export RELEASE_DATE=`date`
-export VERSION="`git rev-parse --short HEAD`-`date +%Y-%m-%dT%Hh%Mm%Ss`"
+
 the_command="docker-compose -f docker-compose.yml -f docker-compose.prod.yml $@"
 echo "Running '${the_command}'..."
 eval ${the_command}

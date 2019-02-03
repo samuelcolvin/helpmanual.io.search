@@ -1,6 +1,7 @@
 import logging
 import re
 from datetime import datetime
+from secrets import compare_digest
 
 from aiohttp.web import HTTPUnauthorized, Response, StreamResponse
 
@@ -100,8 +101,8 @@ STREAM_HEAD = b"""\
 
 
 async def update(request):
-    if request.match_info['token'] != request.app['settings'].update_token:
-        raise HTTPUnauthorized(text='invalid token')
+    if not compare_digest(request.match_info['token'], request.app['settings'].update_token):
+        raise HTTPUnauthorized(text='invalid token\n')
     r = StreamResponse()
     r.content_type = 'text/html'
     await r.prepare(request)
@@ -118,6 +119,17 @@ async def update(request):
             logger.warning('unable to write to response: %s', e)
 
     start, finish = int(request.match_info['start']), int(request.match_info['finish'])
-    async with request.app['db'].acquire() as conn:
-        await update_index(start, finish, conn, log)
+    await update_index(start, finish, request.app['db'], log)
     return r
+
+
+async def delete_entries(request):
+    if not compare_digest(request.match_info['token'], request.app['settings'].update_token):
+        raise HTTPUnauthorized(text='invalid token\n')
+
+    async with request.app['db'].acquire() as conn:
+        entries_before = await conn.fetchval('SELECT COUNT(*) from entries')
+        logger.info('entries before: %d', entries_before)
+        await conn.execute('DELETE FROM entries')
+
+    return Response(text=f'all entries deleted, entries before: {entries_before}', content_type='text/plain')
